@@ -1311,8 +1311,12 @@ struct SPVInstruction
 						else
 						{
 							// assuming can't dynamically index into a vector (would be a OpVectorShuffle)
-							RDCASSERT(op->arguments[i]->constant && op->arguments[i]->constant->type->IsBasicInt());
-							idx = op->arguments[i]->constant->i32;
+							// :JK: op->arguments[i]->constant seems to be nullptr..
+							if( op->arguments[i]->constant )
+							{
+								RDCASSERT(op->arguments[i]->constant && op->arguments[i]->constant->type->IsBasicInt());
+								idx = op->arguments[i]->constant->i32;
+							}
 						}
 					}
 
