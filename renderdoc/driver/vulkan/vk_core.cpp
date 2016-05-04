@@ -674,7 +674,7 @@ VkResult WrappedVulkan::FilterDeviceExtensionProperties(VkPhysicalDevice physDev
 		{
 			// warn on spec version mismatch, but allow it.
 			if(supportedExtensions[i].specVersion != it->specVersion)
-				RDCWARN("Spec versions are different between supported extension (%d) and reported (%d)!", supportedExtensions[i].specVersion, it->specVersion);
+				RDCWARN("Spec versions of %s are different between supported extension (%d) and reported (%d)!", it->extensionName, supportedExtensions[i].specVersion, it->specVersion);
 
 			filtered.push_back(*it);
 			++it;
@@ -863,6 +863,8 @@ void WrappedVulkan::StartFrameCapture(void *dev, void *wnd)
 	RenderDoc::Inst().SetCurrentDriver(RDC_Vulkan);
 
 	m_AppControlledCapture = true;
+
+	m_FrameCounter = RDCMAX(1+(uint32_t)m_CapturedFrames.size(), m_FrameCounter);
 	
 	FetchFrameInfo frame;
 	frame.frameNumber = m_FrameCounter+1;
@@ -2077,23 +2079,26 @@ VkBool32 WrappedVulkan::DebugCallback(
 				const char*                                 pLayerPrefix,
 				const char*                                 pMessage)
 {
-	bool isDS = !strcmp(pLayerPrefix, "DS");
+	if(m_State < WRITING)
+	{
+		bool isDS = !strcmp(pLayerPrefix, "DS");
 
-	// All access mask/barrier messages.
-	// These are just too spammy/false positive/unreliable to keep
-	if(isDS && messageCode == 12)
-		return false;
+		// All access mask/barrier messages.
+		// These are just too spammy/false positive/unreliable to keep
+		if(isDS && messageCode == 12)
+			return false;
 
-	bool isMEM = !strcmp(pLayerPrefix, "MEM");
+		bool isMEM = !strcmp(pLayerPrefix, "MEM");
 
-	// Memory is aliased between image and buffer
-	// ignore memory aliasing warning - we make use of the memory in disjoint ways
-	// and copy image data over separately, so our use is safe
-	// no location set for this one, so ignore by code (maybe too coarse)
-	if(isMEM && messageCode == 3)
-		return false;
+		// Memory is aliased between image and buffer
+		// ignore memory aliasing warning - we make use of the memory in disjoint ways
+		// and copy image data over separately, so our use is safe
+		// no location set for this one, so ignore by code (maybe too coarse)
+		if(isMEM && messageCode == 3)
+			return false;
 
-	RDCWARN("[%s:%u/%d] %s", pLayerPrefix, (uint32_t)location, messageCode, pMessage);
+		RDCWARN("[%s:%u/%d] %s", pLayerPrefix, (uint32_t)location, messageCode, pMessage);
+	}
 	return false;
 }
 

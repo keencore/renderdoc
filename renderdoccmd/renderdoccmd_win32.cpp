@@ -264,17 +264,29 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 
 	wargv = CommandLineToArgvW(GetCommandLine(), &argc);
 
-	char **argv = new char*[argc];
+	std::vector<std::string> argv_storage;
+	std::vector<char *> argv_pointers;
 
+	argv_storage.resize(argc);
+	argv_pointers.resize(argc);
 	for(int i=0; i < argc; i++)
 	{
 		size_t len = wcslen(wargv[i]);
 		len *= 4; // worst case, every UTF-8 character takes 4 bytes
-		argv[i] = new char[len + 1];
-		argv[i][len] = 0;
+		argv_storage[i].resize(len + 1);
+		argv_storage[i][len] = 0;
+		argv_pointers[i] = &argv_storage[i][0];
 	
-		WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, &argv[i][0], (int)len+1, NULL, NULL);
+		WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv_pointers[i], (int)len+1, NULL, NULL);
 	}
+
+	char *argv_backup[] = { "", NULL };
+	char **argv = NULL; 
+
+	if(argc > 0)
+		argv = &argv_pointers[0];
+	else
+		argv = argv_backup;
 
 	LocalFree(wargv);
 
@@ -311,6 +323,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 			MultiByteToWideChar(CP_UTF8, 0, originalpath.c_str(), -1, conv, int(originalpath.size()+1));
 
 			wide_path = conv;
+
+			delete[] conv;
 		}
 
 		// Wait for UI to exit
@@ -338,7 +352,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 					fn = strchr(fn, '/');
 					if(fn) fn++;
 
-					if(*fn)
+					if(fn && *fn)
 					{
 						wchar_t conv[MAX_PATH] = {0};
 						wchar_t *wfn = conv;
@@ -371,7 +385,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 					fn = strchr(fn, '/');
 					if(fn) fn++;
 
-					if(*fn)
+					if(fn && *fn)
 					{
 						wchar_t conv[MAX_PATH] = {0};
 						wchar_t *wfn = conv;
@@ -398,8 +412,10 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 		cmdline += L"/renderdocui.exe\" --updatedone";
 
 		wchar_t *paramsAlloc = new wchar_t[512];
+		
+		ZeroMemory(paramsAlloc, sizeof(wchar_t)*512);
 
-		wcscpy_s(paramsAlloc, 511, cmdline.c_str());
+		wcscpy_s(paramsAlloc, sizeof(wchar_t)*511, cmdline.c_str());
 
 		PROCESS_INFORMATION pi;
 		STARTUPINFOW si;
@@ -413,6 +429,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
 		}
+
+		delete[] paramsAlloc;
 
 		return 0;
 	}
@@ -693,15 +711,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst,
 		}
 		
 		CloseHandle(pipe);
-
+		
 		return 0;
 	}
 
-	int retval = renderdoccmd(argc, argv);
-	
-	for(int i=0; i < argc; i++)
-		delete[] argv[i];
-	delete[] argv;
-
-	return retval;
+	return renderdoccmd(argc, argv);
 }

@@ -2512,7 +2512,9 @@ void WrappedID3D11Device::StartFrameCapture(void *dev, void *wnd)
 	m_Failures = 0;
 	m_FailedFrame = 0;
 	m_FailedReason = CaptureSucceeded;
-
+	
+	m_FrameCounter = RDCMAX(1+(uint32_t)m_CapturedFrames.size(), m_FrameCounter);
+	
 	FetchFrameInfo frame;
 	frame.frameNumber = m_FrameCounter+1;
 	frame.captureTime = Timing::GetUnixTimestamp();
@@ -3096,7 +3098,9 @@ HRESULT WrappedID3D11Device::Present(IDXGISwapChain *swap, UINT SyncInterval, UI
 				if(overlay & eRENDERDOC_Overlay_FrameRate)
 				{
 					overlayText += StringFormat::Fmt(" %.2lf ms (%.2lf .. %.2lf) (%.0lf FPS)",
-																					m_AvgFrametime, m_MinFrametime, m_MaxFrametime, 1000.0f/m_AvgFrametime);
+																					m_AvgFrametime, m_MinFrametime, m_MaxFrametime,
+																					// max with 0.01ms so that we don't divide by zero
+																					1000.0f/RDCMAX(0.01, m_AvgFrametime) );
 				}
 
 				float y=0.0f;

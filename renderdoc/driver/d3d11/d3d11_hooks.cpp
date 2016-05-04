@@ -63,6 +63,8 @@ public:
 		m_EnabledHooks = enable;
 	}
 
+	void OptionsUpdated(const char *libName) {}
+
 	bool UseHooks()
 	{
 		return (d3d11hooks.m_HasHooks && d3d11hooks.m_EnabledHooks);
@@ -248,7 +250,7 @@ private:
 		}
 		else if(SUCCEEDED(ret))
 		{
-			RDCDEBUG("succeeded.");
+			RDCLOG("Created wrapped D3D11 device.");
 		}
 		else
 		{
